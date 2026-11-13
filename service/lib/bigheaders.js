@@ -10,6 +10,9 @@ const URL = require('url');
 const SESSION_IDLE = 30000;
 const REQUEST_TIMEOUT = 30000;
 const MAX_HEADER_LIST = 262144;
+// Node also caps how many header entries a session accepts (128 by default) and resets the stream
+// with ENHANCE_YOUR_CALM past that. A signed-in /tv answers with many Set-Cookie entries.
+const MAX_HEADER_PAIRS = 4096;
 
 const ILLEGAL_IN_H2 = ['connection', 'keep-alive', 'proxy-connection', 'transfer-encoding', 'upgrade', 'host'];
 
@@ -20,7 +23,10 @@ const sessionFor = (origin) => {
     const existing = sessions.get(origin);
     if (existing && !existing.closed && !existing.destroyed) return existing;
 
-    const session = http2.connect(origin, { settings: { maxHeaderListSize: MAX_HEADER_LIST } });
+    const session = http2.connect(origin, {
+        maxHeaderListPairs: MAX_HEADER_PAIRS,
+        settings: { maxHeaderListSize: MAX_HEADER_LIST }
+    });
     const forget = () => { if (sessions.get(origin) === session) sessions.delete(origin); };
 
     session.setTimeout(SESSION_IDLE, () => session.close());

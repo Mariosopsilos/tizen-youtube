@@ -47,7 +47,9 @@ const serve = (leaf) => {
             'content-type': 'text/html',
             'content-encoding': encoding,
             'content-length': String(body.length),
-            'content-security-policy': POLICY
+            'content-security-policy': POLICY,
+            // Many entries, as a signed-in page sends; Node rejects more than 128 by default.
+            'set-cookie': Array.from({ length: 200 }, (_, n) => `c${n}=v; Path=/`)
         });
         stream.end(body);
     });
@@ -60,6 +62,8 @@ const serve = (leaf) => {
                 check('the status comes through', response.status === 200, response.status);
                 check('a header past HTTP/1\'s limit comes through',
                     response.headers.get('content-security-policy') === POLICY);
+                check('a response with many header entries comes through',
+                    response.headers.raw()['set-cookie'].length === 200);
                 check('no pseudo-header is handed on',
                     Object.keys(response.headers.raw()).every((name) => name[0] !== ':'));
                 check('the body is no longer said to be encoded', response.headers.get('content-encoding') === null);
